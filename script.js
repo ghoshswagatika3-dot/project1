@@ -15,8 +15,13 @@ let state = {
   activeSort: 'created-desc',
   searchQuery: '',
   theme: 'dark',
-  accent: 'violet'
+  accent: 'violet',
+  // Auth
+  token: null,
+  user: null
 };
+
+const API_BASE = '';
 
 // SVG Icons Constants for Dynamic Injection
 const ICONS = {
@@ -79,7 +84,28 @@ const DOM = {
   importBackupFile: document.getElementById('import-backup-file'),
   
   // Confetti Canvas
-  confettiCanvas: document.getElementById('confetti-canvas')
+  confettiCanvas: document.getElementById('confetti-canvas'),
+
+  // Auth
+  authModal: document.getElementById('auth-modal'),
+  syncAccountBtn: document.getElementById('sync-account-btn'),
+  syncBtnText: document.getElementById('sync-btn-text'),
+  userBadge: document.getElementById('user-badge'),
+  userInitials: document.getElementById('user-initials'),
+  dropdownUsername: document.getElementById('dropdown-username'),
+  logoutBtn: document.getElementById('logout-btn'),
+  closeAuthModalBtn: document.getElementById('close-auth-modal'),
+  tabLogin: document.getElementById('tab-login'),
+  tabRegister: document.getElementById('tab-register'),
+  loginForm: document.getElementById('login-form'),
+  registerForm: document.getElementById('register-form'),
+  loginUsername: document.getElementById('login-username'),
+  loginPassword: document.getElementById('login-password'),
+  loginError: document.getElementById('login-error'),
+  regName: document.getElementById('reg-name'),
+  regUsername: document.getElementById('reg-username'),
+  regPassword: document.getElementById('reg-password'),
+  regError: document.getElementById('reg-error')
 };
 
 // ==========================================================================
@@ -91,49 +117,45 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function initApp() {
-  // 1. Load data from localStorage
-  const savedTodos = localStorage.getItem('aura_todos');
-  if (savedTodos) {
-    try {
-      state.todos = JSON.parse(savedTodos);
-    } catch (e) {
-      console.error("Failed to parse saved todos, resetting database.", e);
-      state.todos = [];
-    }
-  } else {
-    // Inject seed data if first time
-    getSeedTodos();
-  }
-
-  // Load preferences
+  // 1. Load preferences first
   state.theme = localStorage.getItem('aura_theme') || 'dark';
   state.accent = localStorage.getItem('aura_accent') || 'violet';
-  
   document.documentElement.setAttribute('data-theme', state.theme);
   document.documentElement.setAttribute('data-accent', state.accent);
-  
-  // Set active states on picking controls
+
   DOM.accentDots.forEach(dot => {
-    if (dot.getAttribute('data-accent') === state.accent) {
-      dot.classList.add('active');
-    } else {
-      dot.classList.remove('active');
-    }
+    dot.classList.toggle('active', dot.getAttribute('data-accent') === state.accent);
   });
 
   // 2. Set dates and greeting
   updateHeaderDateTime();
-  setInterval(updateHeaderDateTime, 60000); // refresh time check every minute
+  setInterval(updateHeaderDateTime, 60000);
 
-  // 3. Set due date input default min to today
+  // 3. Set due date min to today
   const today = new Date().toISOString().split('T')[0];
   DOM.taskDueDate.min = today;
 
   // 4. Setup listeners
   setupEventListeners();
 
-  // 5. Initial Render
-  renderApp();
+  // 5. Restore session or load local data
+  const savedToken = localStorage.getItem('aura_token');
+  const savedUser = localStorage.getItem('aura_user');
+  if (savedToken && savedUser) {
+    state.token = savedToken;
+    state.user = JSON.parse(savedUser);
+    updateAuthUI();
+    fetchTasksFromServer().then(() => renderApp());
+  } else {
+    const savedTodos = localStorage.getItem('aura_todos');
+    if (savedTodos) {
+      try { state.todos = JSON.parse(savedTodos); }
+      catch (e) { state.todos = []; }
+    } else {
+      getSeedTodos();
+    }
+    renderApp();
+  }
 }
 
 function getSeedTodos() {
@@ -262,18 +284,73 @@ function setupEventListeners() {
   DOM.clearFormBtn.addEventListener('click', resetForm);
 
   // Global Clear Completed
-  DOM.clearCompletedBtn.addEventListener('click', () => {
+  DOM.clearCompletedBtn.addEventListener('click', async () => {
     const originalLength = state.todos.length;
-    state.todos = state.todos.filter(t => !t.completed);
-    if (state.todos.length !== originalLength) {
-      saveToLocalStorage();
-      renderApp();
+    if (state.token) {
+      await apiClearCompleted();
+    } else {
+      state.todos = state.todos.filter(t => !t.completed);
+      if (state.todos.length !== originalLength) {
+        saveToLocalStorage();
+        renderApp();
+      }
     }
   });
 
   // Backup Import & Export
   DOM.exportBackupBtn.addEventListener('click', exportJSONBackup);
   DOM.importBackupFile.addEventListener('change', importJSONBackup);
+
+  // Auth Modal
+  DOM.syncAccountBtn.addEventListener('click', () => {
+    if (state.token) return; // already logged in, badge handles logout
+    openAuthModal();
+  });
+  DOM.closeAuthModalBtn.addEventListener('click', closeAuthModal);
+  DOM.authModal.addEventListener('click', (e) => {
+    if (e.target === DOM.authModal) closeAuthModal();
+  });
+
+  // Modal Tabs
+  DOM.tabLogin.addEventListener('click', () => switchAuthTab('login'));
+  DOM.tabRegister.addEventListener('click', () => switchAuthTab('register'));
+
+  // Login Form
+  DOM.loginForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = DOM.loginForm.querySelector('button[type="submit"]');
+    btn.classList.add('btn-loading');
+    DOM.loginError.classList.add('hidden');
+    try {
+      await loginUser(DOM.loginUsername.value.trim(), DOM.loginPassword.value);
+      closeAuthModal();
+    } catch (err) {
+      DOM.loginError.textContent = err.message;
+      DOM.loginError.classList.remove('hidden');
+    } finally {
+      btn.classList.remove('btn-loading');
+    }
+  });
+
+  // Register Form
+  DOM.registerForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = DOM.registerForm.querySelector('button[type="submit"]');
+    btn.classList.add('btn-loading');
+    DOM.regError.classList.add('hidden');
+    try {
+      await registerUser(DOM.regName.value.trim(), DOM.regUsername.value.trim(), DOM.regPassword.value);
+      closeAuthModal();
+    } catch (err) {
+      DOM.regError.textContent = err.message;
+      DOM.regError.classList.remove('hidden');
+    } finally {
+      btn.classList.remove('btn-loading');
+    }
+  });
+
+  // Logout
+  DOM.logoutBtn.addEventListener('click', logoutUser);
 }
 
 // ==========================================================================
@@ -344,7 +421,7 @@ function renderBuilderSubtasks() {
 // ==========================================================================
 // Core CRUD Logic (Todo Adding & Editing Form Handlers)
 // ==========================================================================
-function handleFormSubmit(e) {
+async function handleFormSubmit(e) {
   e.preventDefault();
   
   const title = DOM.taskTitle.value.trim();
@@ -364,18 +441,18 @@ function handleFormSubmit(e) {
       todo.category = category;
       todo.priority = priority;
       todo.dueDate = dueDate;
-      
-      // Preserve original checklist item completion if possible, update list
       const oldSubtasks = todo.subtasks || [];
       todo.subtasks = state.builderSubtasks.map(text => {
-        // match existing to retain completed status
         const matched = oldSubtasks.find(os => os.text === text);
         return {
           id: matched ? matched.id : 'sub-' + Math.random().toString(36).substr(2, 9),
-          text: text,
+          text,
           completed: matched ? matched.completed : false
         };
       });
+      if (state.token) {
+        await apiUpdateTask(todo);
+      }
     }
     state.editingTodoId = null;
     DOM.submitBtn.textContent = "Create Task";
@@ -384,19 +461,27 @@ function handleFormSubmit(e) {
     // CREATE MODE
     const newTodo = {
       id: 'todo-' + Math.random().toString(36).substr(2, 9),
-      title: title,
+      title,
       description: desc,
-      category: category,
-      priority: priority,
-      dueDate: dueDate,
+      category,
+      priority,
+      dueDate,
       createdDate: new Date().toISOString(),
       completed: false,
       subtasks: state.builderSubtasks.map(text => ({
         id: 'sub-' + Math.random().toString(36).substr(2, 9),
-        text: text,
+        text,
         completed: false
       }))
     };
+    if (state.token) {
+      const serverTask = await apiCreateTask(newTodo);
+      if (serverTask) {
+        // Use _id from server as canonical id
+        newTodo.id = serverTask._id || newTodo.id;
+        newTodo._id = serverTask._id;
+      }
+    }
     state.todos.unshift(newTodo);
   }
 
@@ -443,41 +528,37 @@ function startEditTodo(id) {
 
 function deleteTodo(id) {
   const card = document.querySelector(`[data-id="${id}"]`);
+  const doDelete = async () => {
+    if (state.token) await apiDeleteTask(id);
+    state.todos = state.todos.filter(t => t.id !== id);
+    saveToLocalStorage();
+    renderApp();
+  };
   if (card) {
     card.style.transform = 'translateY(10px) scale(0.95)';
     card.style.opacity = '0';
     card.style.transition = 'all 0.25s ease-out';
-    setTimeout(() => {
-      state.todos = state.todos.filter(t => t.id !== id);
-      saveToLocalStorage();
-      renderApp();
-    }, 250);
+    setTimeout(doDelete, 250);
   } else {
-    state.todos = state.todos.filter(t => t.id !== id);
-    saveToLocalStorage();
-    renderApp();
+    doDelete();
   }
 }
 
-function toggleTodoCompletion(id) {
+async function toggleTodoCompletion(id) {
   const todo = state.todos.find(t => t.id === id);
   if (!todo) return;
 
   todo.completed = !todo.completed;
-  
-  // Complete all subtasks when checking main task completed
   if (todo.completed && todo.subtasks) {
     todo.subtasks.forEach(sub => sub.completed = true);
-    triggerConfettiBurst(); // CELEBRATION!
-  } else if (!todo.completed && todo.subtasks) {
-    // Uncompleting main todo leaves subtasks as completed, or we could leave them. Standard is fine.
+    triggerConfettiBurst();
   }
-
+  if (state.token) await apiUpdateTask(todo);
   saveToLocalStorage();
   renderApp();
 }
 
-function toggleSubtaskCompletion(todoId, subtaskId) {
+async function toggleSubtaskCompletion(todoId, subtaskId) {
   const todo = state.todos.find(t => t.id === todoId);
   if (!todo) return;
 
@@ -486,7 +567,6 @@ function toggleSubtaskCompletion(todoId, subtaskId) {
 
   subtask.completed = !subtask.completed;
 
-  // If all subtasks are now completed, auto-complete parent task (optional UX feature, let's do it!)
   const allSubtasksCompleted = todo.subtasks.every(s => s.completed);
   if (allSubtasksCompleted && !todo.completed) {
     todo.completed = true;
@@ -495,8 +575,162 @@ function toggleSubtaskCompletion(todoId, subtaskId) {
     todo.completed = false;
   }
 
+  if (state.token) await apiUpdateTask(todo);
   saveToLocalStorage();
   renderApp();
+}
+
+// ==========================================================================
+// Cloud API Functions
+// ==========================================================================
+async function apiFetch(endpoint, options = {}) {
+  const headers = { 'Content-Type': 'application/json' };
+  if (state.token) headers['Authorization'] = `Bearer ${state.token}`;
+  const res = await fetch(`${API_BASE}${endpoint}`, { ...options, headers });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Request failed');
+  return data;
+}
+
+async function registerUser(name, username, password) {
+  const data = await apiFetch('/users/register', {
+    method: 'POST',
+    body: JSON.stringify({ name, username, password })
+  });
+  state.token = data.token;
+  state.user = data.user;
+  localStorage.setItem('aura_token', data.token);
+  localStorage.setItem('aura_user', JSON.stringify(data.user));
+  // Migrate local guest tasks to server
+  if (state.todos.length > 0) {
+    for (const todo of state.todos) {
+      try { await apiCreateTask(todo); } catch (e) {}
+    }
+  }
+  await fetchTasksFromServer();
+  updateAuthUI();
+  renderApp();
+}
+
+async function loginUser(username, password) {
+  const data = await apiFetch('/users/login', {
+    method: 'POST',
+    body: JSON.stringify({ username, password })
+  });
+  state.token = data.token;
+  state.user = data.user;
+  localStorage.setItem('aura_token', data.token);
+  localStorage.setItem('aura_user', JSON.stringify(data.user));
+  await fetchTasksFromServer();
+  updateAuthUI();
+  renderApp();
+}
+
+function logoutUser() {
+  state.token = null;
+  state.user = null;
+  state.todos = [];
+  localStorage.removeItem('aura_token');
+  localStorage.removeItem('aura_user');
+  localStorage.removeItem('aura_todos');
+  updateAuthUI();
+  getSeedTodos();
+  renderApp();
+}
+
+async function fetchTasksFromServer() {
+  try {
+    const tasks = await apiFetch('/tasks');
+    // Normalise _id to id for consistency with local state
+    state.todos = tasks.map(t => ({ ...t, id: t._id || t.id }));
+    saveToLocalStorage();
+  } catch (e) {
+    console.error('Failed to fetch tasks from server:', e);
+  }
+}
+
+async function apiCreateTask(todo) {
+  try {
+    return await apiFetch('/tasks', { method: 'POST', body: JSON.stringify(todo) });
+  } catch (e) {
+    console.error('Failed to create task on server:', e);
+    return null;
+  }
+}
+
+async function apiUpdateTask(todo) {
+  const serverId = todo._id || todo.id;
+  try {
+    return await apiFetch(`/tasks/${serverId}`, { method: 'PUT', body: JSON.stringify(todo) });
+  } catch (e) {
+    console.error('Failed to update task on server:', e);
+    return null;
+  }
+}
+
+async function apiDeleteTask(id) {
+  try {
+    return await apiFetch(`/tasks/${id}`, { method: 'DELETE' });
+  } catch (e) {
+    console.error('Failed to delete task on server:', e);
+    return null;
+  }
+}
+
+async function apiClearCompleted() {
+  try {
+    await apiFetch('/tasks/clear-completed', { method: 'POST' });
+    await fetchTasksFromServer();
+    renderApp();
+  } catch (e) {
+    console.error('Failed to clear completed tasks on server:', e);
+  }
+}
+
+// ==========================================================================
+// Auth UI Helpers
+// ==========================================================================
+function updateAuthUI() {
+  if (state.user) {
+    DOM.syncAccountBtn.classList.add('hidden');
+    DOM.userBadge.classList.remove('hidden');
+    const initials = state.user.name
+      ? state.user.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
+      : state.user.username.slice(0, 2).toUpperCase();
+    DOM.userInitials.textContent = initials;
+    DOM.dropdownUsername.textContent = `@${state.user.username}`;
+    DOM.greetingText.textContent = `Hello, ${state.user.name || state.user.username}`;
+  } else {
+    DOM.syncAccountBtn.classList.remove('hidden');
+    DOM.userBadge.classList.add('hidden');
+  }
+}
+
+function openAuthModal() {
+  DOM.authModal.classList.remove('hidden');
+  DOM.loginUsername.focus();
+}
+
+function closeAuthModal() {
+  DOM.authModal.classList.add('hidden');
+  DOM.loginForm.reset();
+  DOM.registerForm.reset();
+  DOM.loginError.classList.add('hidden');
+  DOM.regError.classList.add('hidden');
+}
+
+function switchAuthTab(tab) {
+  if (tab === 'login') {
+    DOM.tabLogin.classList.add('active');
+    DOM.tabRegister.classList.remove('active');
+    DOM.loginForm.classList.remove('hidden');
+    DOM.registerForm.classList.add('hidden');
+  } else {
+    DOM.tabRegister.classList.add('active');
+    DOM.tabLogin.classList.remove('active');
+    DOM.registerForm.classList.remove('hidden');
+    DOM.loginForm.classList.add('hidden');
+  }
 }
 
 // ==========================================================================

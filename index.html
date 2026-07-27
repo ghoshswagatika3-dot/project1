@@ -59,6 +59,30 @@
             <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
           </svg>
         </button>
+
+        <!-- Sync / Account Section -->
+        <div class="account-section">
+          <button id="sync-account-btn" class="utility-btn accent-glow" title="Sync Account">
+            <svg class="utility-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+            <span id="sync-btn-text">Sync Cloud</span>
+          </button>
+          
+          <div id="user-badge" class="user-badge hidden">
+            <span id="user-initials">U</span>
+            <div class="user-dropdown">
+              <p class="dropdown-username" id="dropdown-username">Guest</p>
+              <button id="logout-btn" class="dropdown-item danger-text">
+                <svg class="dropdown-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>
+                </svg>
+                <span>Sign Out</span>
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     </header>
 
@@ -322,6 +346,61 @@
         </button>
       </div>
     </footer>
+  </div>
+
+  <!-- Authentication Modal -->
+  <div id="auth-modal" class="modal-overlay hidden">
+    <div class="modal-card">
+      <button class="modal-close-btn" id="close-auth-modal" aria-label="Close modal">&times;</button>
+      
+      <div class="modal-tabs">
+        <button class="modal-tab active" id="tab-login">Sign In</button>
+        <button class="modal-tab" id="tab-register">Register</button>
+      </div>
+
+      <!-- Login Form -->
+      <form id="login-form" class="auth-form">
+        <h3>Welcome Back</h3>
+        <p class="auth-sub">Access your tasks from any device.</p>
+        
+        <div class="form-group">
+          <label for="login-username" class="form-label">Username</label>
+          <input type="text" id="login-username" placeholder="Enter username" required autocomplete="username">
+        </div>
+        
+        <div class="form-group">
+          <label for="login-password" class="form-label">Password</label>
+          <input type="password" id="login-password" placeholder="Enter password" required autocomplete="current-password">
+        </div>
+
+        <button type="submit" class="primary-btn auth-submit-btn">Sign In</button>
+        <p class="auth-error-msg hidden" id="login-error"></p>
+      </form>
+
+      <!-- Register Form -->
+      <form id="register-form" class="auth-form hidden">
+        <h3>Create Account</h3>
+        <p class="auth-sub">Start keeping track of your productivity.</p>
+        
+        <div class="form-group">
+          <label for="reg-name" class="form-label">Full Name</label>
+          <input type="text" id="reg-name" placeholder="Enter full name" required autocomplete="name">
+        </div>
+
+        <div class="form-group">
+          <label for="reg-username" class="form-label">Username</label>
+          <input type="text" id="reg-username" placeholder="Choose username" required autocomplete="username">
+        </div>
+        
+        <div class="form-group">
+          <label for="reg-password" class="form-label">Password</label>
+          <input type="password" id="reg-password" placeholder="Create password" required autocomplete="new-password">
+        </div>
+
+        <button type="submit" class="primary-btn auth-submit-btn">Register</button>
+        <p class="auth-error-msg hidden" id="reg-error"></p>
+      </form>
+    </div>
   </div>
 
   <!-- JavaScript -->

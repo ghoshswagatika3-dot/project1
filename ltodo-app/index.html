@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark" data-accent="violet">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="A premium, interactive Todo application featuring glassmorphism design, task statistics, categories, priorities, subtasks, and data persistence.">
+  <title>Aura - Premium Todo Dashboard</title>
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Styling -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Particle Confetti Canvas -->
+  <canvas id="confetti-canvas"></canvas>
+
+  <div class="app-container">
+    <!-- Header Area -->
+    <header class="app-header">
+      <div class="header-left">
+        <div class="logo-area">
+          <svg class="logo-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="3" y="3" width="18" height="18" rx="6" stroke="currentColor" stroke-width="2.5"/>
+            <path d="M9 12L11 14L15 10" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <h1>Aura</h1>
+        </div>
+        <div class="greeting-area">
+          <h2 id="greeting-text">Hello, Explorer</h2>
+          <p id="current-date-text">Loading date...</p>
+        </div>
+      </div>
+      
+      <div class="header-right">
+        <!-- Accent Selector -->
+        <div class="accent-picker-container">
+          <span class="picker-label">Accent</span>
+          <div class="accent-options">
+            <button class="accent-dot violet active" data-accent="violet" title="Violet Nebula" aria-label="Violet Accent"></button>
+            <button class="accent-dot emerald" data-accent="emerald" title="Emerald Ocean" aria-label="Emerald Accent"></button>
+            <button class="accent-dot amber" data-accent="amber" title="Amber Sunset" aria-label="Amber Accent"></button>
+            <button class="accent-dot rose" data-accent="rose" title="Crimson Flame" aria-label="Rose Accent"></button>
+          </div>
+        </div>
+        
+        <!-- Theme Toggle -->
+        <button id="theme-toggle" class="theme-toggle-btn" aria-label="Toggle light/dark theme">
+          <!-- Moon Icon (Dark Mode Active) -->
+          <svg class="theme-icon moon-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" fill="currentColor"/>
+          </svg>
+          <!-- Sun Icon (Light Mode Active) -->
+          <svg class="theme-icon sun-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="12" cy="12" r="5" fill="currentColor"/>
+            <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Grid Dashboard Layout -->
+    <main class="dashboard-grid">
+      
+      <!-- LEFT COLUMN: Stats Dashboard & Filters -->
+      <section class="sidebar-panel">
+        <!-- Stats Card -->
+        <div class="dashboard-card stats-card">
+          <h3>Progress Hub</h3>
+          <div class="stats-content">
+            <div class="progress-ring-container">
+              <svg class="progress-ring" width="120" height="120">
+                <circle class="progress-ring-bg" stroke="currentColor" stroke-width="8" fill="transparent" r="50" cx="60" cy="60"/>
+                <circle id="progress-bar-circle" class="progress-ring-bar" stroke="currentColor" stroke-width="8" fill="transparent" r="50" cx="60" cy="60"/>
+              </svg>
+              <div class="progress-text-overlay">
+                <span id="progress-percentage">0%</span>
+                <span class="progress-sub">Done</span>
+              </div>
+            </div>
+            <div class="stats-numeric">
+              <div class="stat-item">
+                <span class="stat-value" id="stats-total">0</span>
+                <span class="stat-label">Total</span>
+              </div>
+              <div class="stat-item border-left">
+                <span class="stat-value" id="stats-completed">0</span>
+                <span class="stat-label">Completed</span>
+              </div>
+            </div>
+          </div>
+          <div class="stats-footer">
+            <div class="category-breakdown">
+              <div class="category-bar-wrapper">
+                <div class="category-info">
+                  <span>Work</span>
+                  <span id="cat-work-percent">0%</span>
+                </div>
+                <div class="category-progress-track">
+                  <div class="category-progress-fill" id="cat-work-fill" style="width: 0%;"></div>
+                </div>
+              </div>
+              <div class="category-bar-wrapper">
+                <div class="category-info">
+                  <span>Personal</span>
+                  <span id="cat-personal-percent">0%</span>
+                </div>
+                <div class="category-progress-track">
+                  <div class="category-progress-fill" id="cat-personal-fill" style="width: 0%;"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Filter Controls Card -->
+        <div class="dashboard-card filters-card">
+          <h3>Refine & Sort</h3>
+          
+          <!-- Search -->
+          <div class="search-input-wrapper">
+            <svg class="search-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="2.25"/>
+              <path d="M21 21l-4.35-4.35" stroke="currentColor" stroke-width="2.25" stroke-linecap="round"/>
+            </svg>
+            <input type="text" id="search-input" placeholder="Search tasks..." aria-label="Search tasks">
+          </div>
+
+          <!-- Status Filters -->
+          <div class="filter-section">
+            <label class="filter-label">Status</label>
+            <div class="status-btn-group">
+              <button class="status-btn active" data-status="all">All</button>
+              <button class="status-btn" data-status="active">Active</button>
+              <button class="status-btn" data-status="completed">Done</button>
+            </div>
+          </div>
+
+          <!-- Category Select -->
+          <div class="filter-section">
+            <label for="filter-category" class="filter-label">Category</label>
+            <div class="custom-select-wrapper">
+              <select id="filter-category" aria-label="Filter by category">
+                <option value="all">All Categories</option>
+                <option value="Work">Work</option>
+                <option value="Personal">Personal</option>
+                <option value="Health">Health</option>
+                <option value="Shopping">Shopping</option>
+                <option value="Finance">Finance</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Priority Select -->
+          <div class="filter-section">
+            <label for="filter-priority" class="filter-label">Priority</label>
+            <div class="custom-select-wrapper">
+              <select id="filter-priority" aria-label="Filter by priority">
+                <option value="all">All Priorities</option>
+                <option value="high">🔥 High</option>
+                <option value="medium">⚡ Medium</option>
+                <option value="low">🌱 Low</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Sort Select -->
+          <div class="filter-section">
+            <label for="sort-tasks" class="filter-label">Sort By</label>
+            <div class="custom-select-wrapper">
+              <select id="sort-tasks" aria-label="Sort tasks">
+                <option value="created-desc">Newest First</option>
+                <option value="created-asc">Oldest First</option>
+                <option value="due-date">Due Date</option>
+                <option value="priority-desc">Highest Priority</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- RIGHT COLUMN: Task Creation & Task List -->
+      <section class="main-panel">
+        
+        <!-- Collapsible Add Task Card -->
+        <div class="dashboard-card task-form-card" id="task-form-container">
+          <div class="form-header" id="form-toggle-header">
+            <div class="form-header-title">
+              <svg class="plus-icon-circle" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+              </svg>
+              <span>Add New Task</span>
+            </div>
+            <button class="expand-btn" aria-label="Expand form" aria-expanded="false">
+              <svg class="chevron-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </button>
+          </div>
+          
+          <form id="todo-form" class="todo-form collapsible-content">
+            <!-- Form Grid -->
+            <div class="form-grid">
+              <!-- Title -->
+              <div class="form-group full-width">
+                <label for="task-title" class="form-label">Task Title <span class="required">*</span></label>
+                <input type="text" id="task-title" placeholder="What needs to be done?" required>
+              </div>
+
+              <!-- Description -->
+              <div class="form-group full-width">
+                <label for="task-desc" class="form-label">Description</label>
+                <textarea id="task-desc" placeholder="Add more details about this task..." rows="2"></textarea>
+              </div>
+
+              <!-- Category -->
+              <div class="form-group">
+                <label for="task-category" class="form-label">Category</label>
+                <select id="task-category">
+                  <option value="Work">Work</option>
+                  <option value="Personal" selected>Personal</option>
+                  <option value="Health">Health</option>
+                  <option value="Shopping">Shopping</option>
+                  <option value="Finance">Finance</option>
+                </select>
+              </div>
+
+              <!-- Priority -->
+              <div class="form-group">
+                <label for="task-priority" class="form-label">Priority</label>
+                <select id="task-priority">
+                  <option value="low">Low Priority</option>
+                  <option value="medium" selected>Medium Priority</option>
+                  <option value="high">High Priority</option>
+                </select>
+              </div>
+
+              <!-- Due Date -->
+              <div class="form-group full-width">
+                <label for="task-due-date" class="form-label">Due Date</label>
+                <input type="date" id="task-due-date">
+              </div>
+
+              <!-- Subtasks Builder Section -->
+              <div class="form-group full-width subtask-builder-section">
+                <label class="form-label">Subtasks / Checklist</label>
+                <div class="subtask-builder-input">
+                  <input type="text" id="subtask-input-field" placeholder="Add subtask...">
+                  <button type="button" id="add-subtask-btn" class="secondary-btn">Add</button>
+                </div>
+                <ul id="builder-subtask-list" class="builder-subtask-list">
+                  <!-- Dynamically populated subtask chips before submitting -->
+                </ul>
+              </div>
+            </div>
+
+            <!-- Form Action Buttons -->
+            <div class="form-actions">
+              <button type="button" id="clear-form-btn" class="text-btn">Reset</button>
+              <button type="submit" class="primary-btn">Create Task</button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Task List Area -->
+        <div class="task-list-wrapper">
+          <div class="list-header">
+            <h3>My Tasks</h3>
+            <span class="task-count-badge" id="visible-tasks-count">0 tasks</span>
+          </div>
+
+          <div id="task-list" class="task-list">
+            <!-- Dynamic task items go here -->
+          </div>
+
+          <!-- Empty State Container -->
+          <div id="empty-state" class="empty-state">
+            <svg class="empty-illustration" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="100" cy="100" r="80" fill="currentColor" fill-opacity="0.03" stroke="currentColor" stroke-width="1.5" stroke-dasharray="6 6"/>
+              <rect x="70" y="65" width="60" height="70" rx="6" fill="currentColor" fill-opacity="0.05" stroke="currentColor" stroke-width="2"/>
+              <path d="M85 85h30M85 105h30M85 125h20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              <path d="M120 120l15 15m-15 0l15-15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+            <h4>All clear here!</h4>
+            <p>No tasks found. Try adding a new task or resetting your filters.</p>
+          </div>
+        </div>
+
+      </section>
+
+    </main>
+
+    <!-- Bottom Actions / Tools -->
+    <footer class="app-footer">
+      <div class="footer-left">
+        <p>&copy; 2026 Aura Todo. Built for Visual Excellence.</p>
+      </div>
+      <div class="footer-right">
+        <!-- Import/Export Tools -->
+        <div class="backup-tools">
+          <button id="export-backup-btn" class="utility-btn" title="Export JSON Backup">
+            <svg class="utility-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <span>Export Backup</span>
+          </button>
+          
+          <label for="import-backup-file" class="utility-btn btn-label" title="Import JSON Backup">
+            <svg class="utility-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 14l-5 5-5-5M12 19V9" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <span>Import Backup</span>
+          </label>
+          <input type="file" id="import-backup-file" accept=".json" style="display: none;">
+        </div>
+        
+        <button id="clear-completed-btn" class="danger-btn">
+          <span>Clear Completed</span>
+        </button>
+      </div>
+    </footer>
+  </div>
+
+  <!-- JavaScript -->
+  <script src="script.js"></script>
+</body>
+</html>
